@@ -1,200 +1,105 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Destination, destinations, faqs, phrases, sources } from "./travel-data";
 
-type Place = {
-  id: string;
-  name: string;
-  region: string;
-  type: string;
-  vibe: string;
-  days: string;
-  altitude: string;
-  cost: number;
-  color: string;
-  icon: string;
-  description: string;
-  highlights: string[];
-  mapQuery: string;
-};
+type View = "explore" | "plan" | "language" | "faq";
+type DetailTab = "story" | "do" | "eat" | "stay" | "transport";
 
-const places: Place[] = [
-  { id: "antigua", name: "Antigua", region: "Sacatepéquez", type: "Culture", vibe: "Cobblestone mornings", days: "2–3 days", altitude: "1,545 m", cost: 2, color: "sunset", icon: "✦", description: "Volcano views, courtyard cafés and centuries of stories in a city made for wandering.", highlights: ["Cerro de la Cruz", "Market morning", "Rooftop sunset"], mapQuery: "best restaurants and things to do in Antigua Guatemala" },
-  { id: "atitlan", name: "Lake Atitlán", region: "Sololá", type: "Nature", vibe: "Slow lake days", days: "3–4 days", altitude: "1,562 m", cost: 2, color: "lake", icon: "≈", description: "A volcanic lake ringed by Maya towns, creative communities and quiet coves.", highlights: ["Sunrise paddle", "Village boat loop", "Indian Nose hike"], mapQuery: "best restaurants and activities Lake Atitlan Guatemala" },
-  { id: "tikal", name: "Tikal & Flores", region: "Petén", type: "History", vibe: "Jungle awakening", days: "2–3 days", altitude: "128 m", cost: 3, color: "jungle", icon: "▲", description: "Ancient temples rise above the canopy while howler monkeys soundtrack the dawn.", highlights: ["Tikal sunrise", "Flores island walk", "Yaxhá sunset"], mapQuery: "best restaurants and activities Flores Peten Guatemala" },
-  { id: "semuc", name: "Semuc Champey", region: "Alta Verapaz", type: "Adventure", vibe: "Wild-water reset", days: "2 days", altitude: "350 m", cost: 2, color: "aqua", icon: "~", description: "Turquoise limestone pools, cloud forest trails and a beautifully remote journey.", highlights: ["El Mirador", "Pool cascade", "K'an Ba caves"], mapQuery: "best restaurants and activities Semuc Champey Lanquin" },
-  { id: "acatenango", name: "Acatenango", region: "Chimaltenango", type: "Adventure", vibe: "Above the clouds", days: "2 days", altitude: "3,976 m", cost: 3, color: "volcano", icon: "△", description: "A demanding overnight climb with front-row views of Fuego's glowing eruptions.", highlights: ["Basecamp sunset", "Fuego views", "Summit sunrise"], mapQuery: "Acatenango hike tour operators Guatemala" },
-  { id: "rio-dulce", name: "Río Dulce", region: "Izabal", type: "Nature", vibe: "Caribbean current", days: "2–3 days", altitude: "Sea level", cost: 2, color: "caribbean", icon: "⌁", description: "River canyons, hot springs and Garifuna flavors on the route to the Caribbean.", highlights: ["Boat to Lívingston", "Finca Paraíso", "Castillo San Felipe"], mapQuery: "best restaurants and activities Rio Dulce Livingston Guatemala" },
+const maps = (query: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query + " Guatemala")}`;
+const tabs: {id:View;label:string;icon:string}[] = [
+  {id:"explore",label:"Explore",icon:"⌖"},{id:"plan",label:"My route",icon:"⌁"},{id:"language",label:"Spanish",icon:"A"},{id:"faq",label:"Travel FAQ",icon:"?"}
 ];
 
-const routes = [
-  { title: "The Guatemala First-Timer", days: "10 days", pace: "Balanced", stops: "Antigua → Atitlán → Flores → Tikal", note: "The classics, without rushing", color: "route-blue" },
-  { title: "Volcanoes & Verapaces", days: "8 days", pace: "Active", stops: "Antigua → Acatenango → Cobán → Semuc", note: "Big climbs, cool pools", color: "route-green" },
-  { title: "Slow Road to the Caribbean", days: "12 days", pace: "Unhurried", stops: "Atitlán → Quetzaltenango → Río Dulce → Lívingston", note: "Markets, mountains, sea", color: "route-sand" },
-];
+export default function Home(){
+  const [view,setView]=useState<View>("explore");
+  const [selected,setSelected]=useState<Destination|null>(null);
+  const [detailTab,setDetailTab]=useState<DetailTab>("story");
+  const [saved,setSaved]=useState<string[]>([]);
+  const [route,setRoute]=useState<string[]>(["antigua","atitlan","peten"]);
+  const [activities,setActivities]=useState<string[]>([]);
+  const [query,setQuery]=useState("");
+  const [category,setCategory]=useState("All");
+  const [days,setDays]=useState(12);
+  const [phraseGroup,setPhraseGroup]=useState("Basics");
+  const [faqOpen,setFaqOpen]=useState<number|null>(0);
+  const [toast,setToast]=useState("");
 
-const money = (cost: number) => "$".repeat(cost);
-const mapsUrl = (query: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  useEffect(()=>{try{setSaved(JSON.parse(localStorage.getItem("quetzal-saved-v2")||"[]"));setRoute(JSON.parse(localStorage.getItem("quetzal-route-v2")||"[\"antigua\",\"atitlan\",\"peten\"]"));setActivities(JSON.parse(localStorage.getItem("quetzal-activities-v2")||"[]"));}catch{}},[]);
+  useEffect(()=>{localStorage.setItem("quetzal-saved-v2",JSON.stringify(saved))},[saved]);
+  useEffect(()=>{localStorage.setItem("quetzal-route-v2",JSON.stringify(route))},[route]);
+  useEffect(()=>{localStorage.setItem("quetzal-activities-v2",JSON.stringify(activities))},[activities]);
+  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(""),2200);return()=>clearTimeout(timer)},[toast]);
 
-export default function Home() {
-  const [saved, setSaved] = useState<string[]>([]);
-  const [plan, setPlan] = useState<string[]>(["antigua", "atitlan"]);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-  const [showPlanner, setShowPlanner] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [notice, setNotice] = useState("");
+  const filtered=useMemo(()=>destinations.filter(d=>{
+    const text=`${d.name} ${d.region} ${d.category} ${d.bestFor.join(" ")} ${d.activities.map(a=>a.name).join(" ")}`.toLowerCase();
+    return(category==="All"||d.category===category)&&(!query||text.includes(query.toLowerCase()));
+  }),[query,category]);
+  const routePlaces=route.map(id=>destinations.find(d=>d.id===id)).filter(Boolean) as Destination[];
+  const estimatedDays=routePlaces.reduce((sum,d)=>sum+(d.days.includes("Half")?0.5:parseInt(d.days)||2),0);
 
-  useEffect(() => {
-    try {
-      setSaved(JSON.parse(localStorage.getItem("quetzal-saved") || "[]"));
-      setPlan(JSON.parse(localStorage.getItem("quetzal-plan") || "[\"antigua\",\"atitlan\"]"));
-    } catch { /* device storage can be unavailable */ }
-  }, []);
+  const open=(d:Destination,tab:DetailTab="story")=>{setSelected(d);setDetailTab(tab);document.body.style.overflow="hidden"};
+  const close=()=>{setSelected(null);document.body.style.overflow=""};
+  const toggleRoute=(id:string)=>{setRoute(r=>r.includes(id)?r.filter(x=>x!==id):[...r,id]);setToast(route.includes(id)?"Removed from route":"Added to your route")};
+  const toggleSaved=(id:string)=>{setSaved(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);setToast(saved.includes(id)?"Removed from saved":"Saved for later")};
+  const addActivity=(destination:Destination,name:string)=>{const id=`${destination.id}:${name}`;setActivities(a=>a.includes(id)?a.filter(x=>x!==id):[...a,id]);setToast(activities.includes(id)?"Activity removed":"Activity added to route")};
 
-  useEffect(() => { localStorage.setItem("quetzal-saved", JSON.stringify(saved)); }, [saved]);
-  useEffect(() => { localStorage.setItem("quetzal-plan", JSON.stringify(plan)); }, [plan]);
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 2400);
-    return () => clearTimeout(timer);
-  }, [notice]);
+  return <main className="atlas-app">
+    <header className="atlas-nav">
+      <button className="atlas-brand" onClick={()=>setView("explore")}><span>Q</span><div>quetzal<small>FIELD GUIDE / GUATEMALA</small></div></button>
+      <nav>{tabs.map(t=><button key={t.id} className={view===t.id?"active":""} onClick={()=>setView(t.id)}><i>{t.icon}</i>{t.label}{t.id==="plan"&&<b>{route.length}</b>}</button>)}</nav>
+      <div className="nav-tools"><button className="saved-counter" onClick={()=>{setView("explore");setCategory("Saved")}}>♡ {saved.length}</button><button className="route-cta" onClick={()=>setView("plan")}>Open trip <span>↗</span></button></div>
+    </header>
 
-  const filtered = useMemo(() => places.filter((place) => {
-    const matchesFilter = filter === "All" || place.type === filter;
-    const q = search.toLowerCase();
-    return matchesFilter && (!q || `${place.name} ${place.region} ${place.vibe} ${place.highlights.join(" ")}`.toLowerCase().includes(q));
-  }), [filter, search]);
-  const planPace = plan.length
-    ? Math.round(plan.reduce((sum, id) => sum + (places.find((place) => place.id === id)?.cost || 1), 0) / plan.length)
-    : 1;
-
-  const toggleSave = (id: string) => {
-    setSaved((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-    setNotice(saved.includes(id) ? "Removed from your Guate Bag" : "Saved to your Guate Bag");
-  };
-
-  const togglePlan = (id: string) => {
-    setPlan((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-    setNotice(plan.includes(id) ? "Removed from route" : "Added to your route");
-  };
-
-  const jump = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); };
-
-  return (
-    <main>
-      <header className="nav-wrap">
-        <nav className="nav shell" aria-label="Main navigation">
-          <button className="brand" onClick={() => jump("top")} aria-label="Quetzal home">
-            <span className="brand-mark">Q</span><span>quetzal</span><small>GUATEMALA</small>
-          </button>
-          <div className={`nav-links ${menuOpen ? "open" : ""}`}>
-            <button onClick={() => jump("discover")}>Discover</button>
-            <button onClick={() => jump("routes")}>Routes</button>
-            <button onClick={() => jump("field-notes")}>Field notes</button>
-          </div>
-          <div className="nav-actions">
-            <button className="bag" onClick={() => { setFilter("All"); jump("discover"); }} aria-label={`${saved.length} saved places`}>♡ <span>Guate Bag</span><b>{saved.length}</b></button>
-            <button className="plan-button" onClick={() => setShowPlanner(true)}>Build my trip <span>↗</span></button>
-            <button className="menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">{menuOpen ? "×" : "☰"}</button>
-          </div>
-        </nav>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
-        <div className="shell hero-grid">
-          <div className="hero-copy">
-            <p className="eyebrow"><span>✦</span> The country of eternal spring</p>
-            <h1>Find your way<br/><em>through wonder.</em></h1>
-            <p className="hero-lede">A smarter field guide to Guatemala—curated places, flexible routes and the tiny details that make a good trip unforgettable.</p>
-            <div className="search-box">
-              <span>⌕</span>
-              <label className="sr-only" htmlFor="hero-search">Search Guatemala</label>
-              <input id="hero-search" value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => jump("discover")} placeholder="Where are you curious about?" />
-              <button onClick={() => jump("discover")}>Explore</button>
-            </div>
-            <div className="quick-tags"><span>Try:</span>{["Lake Atitlán", "Jungle", "Volcano"].map(q => <button key={q} onClick={() => { setSearch(q); jump("discover"); }}>{q}</button>)}</div>
-          </div>
-          <div className="hero-compass" aria-hidden="true">
-            <div className="map-blob blob-a"/><div className="map-blob blob-b"/><div className="map-blob blob-c"/>
-            <div className="compass-ring"><i>N</i><strong>✦</strong><span>GUATEMALA<br/><b>15.7835° N</b></span></div>
-            <div className="float-card float-weather"><span>☀</span><b>24°C</b><small>Antigua · now</small></div>
-            <div className="float-card float-season"><span>☂</span><b>Green season</b><small>Pack a light shell</small></div>
-            <div className="place-pin pin-one">1</div><div className="place-pin pin-two">2</div><div className="place-pin pin-three">3</div>
-          </div>
+    {view==="explore"&&<>
+      <section className="atlas-hero">
+        <div className="atlas-contour contour-a"/><div className="atlas-contour contour-b"/>
+        <div className="atlas-hero-copy"><p className="atlas-kicker">GUATEMALA, CURATED DEEPLY</p><h1>Go beyond<br/><em>the postcard.</em></h1><p>Build a route through living Maya culture, volcanic landscapes and Caribbean currents—one well-planned stop at a time.</p>
+          <div className="atlas-search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search places, ruins, food, hikes…" aria-label="Search destinations"/><kbd>⌘ K</kbd></div>
+          <div className="hero-metrics"><span><b>{destinations.length}</b> travel bases</span><span><b>{destinations.reduce((n,d)=>n+d.activities.length,0)}+</b> specific stops</span><span><b>5</b> practical layers</span></div>
         </div>
-        <div className="hero-foot shell"><span>SCROLL TO ROAM</span><div/><p><b>22</b> departments · <b>37</b> volcanoes · one remarkable journey</p></div>
-      </section>
-
-      <section className="discover section shell" id="discover">
-        <div className="section-head">
-          <div><p className="kicker">PLACES WORTH THE DETOUR</p><h2>Pick a feeling,<br/>find a place.</h2></div>
-          <p>From cloud-forest mornings to late-night tostadas, every stop has its own rhythm. Start with the one that feels like you.</p>
-        </div>
-        <div className="filter-row" role="group" aria-label="Filter destinations">
-          {["All", "Culture", "Nature", "Adventure", "History"].map(item => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}
-          <label className="inline-search"><span>⌕</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search places" aria-label="Search places"/></label>
-        </div>
-        <div className="place-grid">
-          {filtered.map((place, index) => (
-            <article className={`place-card ${place.color}`} key={place.id}>
-              <div className="card-art"><span className="art-number">0{index + 1}</span><i>{place.icon}</i><p>{place.vibe}</p><button className={saved.includes(place.id) ? "save saved" : "save"} onClick={() => toggleSave(place.id)} aria-label={`${saved.includes(place.id) ? "Unsave" : "Save"} ${place.name}`}>{saved.includes(place.id) ? "♥" : "♡"}</button></div>
-              <div className="card-body">
-                <div className="card-title"><div><small>{place.region} · {place.type}</small><h3>{place.name}</h3></div><span>{money(place.cost)}</span></div>
-                <p>{place.description}</p>
-                <div className="chips">{place.highlights.map(h => <span key={h}>{h}</span>)}</div>
-                <div className="card-meta"><span>◷ {place.days}</span><span>⌁ {place.altitude}</span></div>
-                <div className="card-actions">
-                  <button onClick={() => togglePlan(place.id)}>{plan.includes(place.id) ? "✓ In your route" : "+ Add to route"}</button>
-                  <a href={mapsUrl(place.mapQuery)} target="_blank" rel="noreferrer">Open in Maps ↗</a>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!filtered.length && <div className="empty"><b>No trails found.</b><p>Try another place or feeling.</p><button onClick={() => { setSearch(""); setFilter("All"); }}>Clear search</button></div>}
-      </section>
-
-      <section className="routes section" id="routes">
-        <div className="shell">
-          <div className="section-head route-head"><div><p className="kicker">ROUTES WITH ROOM TO BREATHE</p><h2>Borrow a route.<br/>Make it yours.</h2></div><button className="text-link" onClick={() => setShowPlanner(true)}>Open trip builder ↗</button></div>
-          <div className="route-list">
-            {routes.map((route, i) => <article className={`route-card ${route.color}`} key={route.title}>
-              <div className="route-index">0{i+1}</div><div><small>{route.days} · {route.pace}</small><h3>{route.title}</h3><p>{route.stops}</p></div><span>{route.note}</span><button onClick={() => { setShowPlanner(true); setNotice("Route ready to customize"); }} aria-label={`Customize ${route.title}`}>↗</button>
-            </article>)}
-          </div>
+        <div className="route-preview">
+          <div className="route-preview-head"><span>YOUR ROUTE, SO FAR</span><b>{route.length} STOPS</b></div>
+          {routePlaces.slice(0,4).map((d,i)=><button key={d.id} onClick={()=>open(d)}><i>0{i+1}</i><div><b>{d.name}</b><small>{d.region} · {d.days}</small></div><span>↗</span></button>)}
+          <button className="preview-plan" onClick={()=>setView("plan")}>Shape this trip <span>→</span></button>
         </div>
       </section>
 
-      <section className="field section shell" id="field-notes">
-        <div className="field-intro"><p className="kicker">GOOD TO KNOW BEFORE YOU GO</p><h2>Your pocket<br/>field guide.</h2><p>Small, practical signals for smoother days—built for quick checks on the road.</p></div>
-        <div className="field-grid">
-          <article className="field-card rain"><span>☂</span><small>SEASON SENSE</small><h3>Afternoon rain is a feature, not a flaw.</h3><p>In green season, plan outdoor adventures before lunch and keep café or museum time for later.</p></article>
-          <article className="field-card money"><span>Q</span><small>MONEY QUICK-CHECK</small><h3>Q 100 ≈ $13</h3><p>Cards work in cities; cash matters at markets, docks and rural trailheads.</p><div className="meter"><i/><i/><i/><i/></div></article>
-          <article className="field-card words"><span>BA</span><small>WORDS THAT OPEN DOORS</small><h3>Buen día</h3><p>Good morning</p><hr/><h3>Matyox</h3><p>Thank you · Kaqchikel</p></article>
-          <article className="field-card safe"><span>+</span><small>TRAVEL CARD</small><h3>Keep the essentials offline.</h3><p>Emergency: <b>110 / 120</b><br/>Tourist assistance: <b>1500</b></p><button onClick={() => setNotice("Travel card saved for this device")}>Save travel card ↓</button></article>
+      <section className="atlas-explore">
+        <aside className="explore-rail"><p>EXPLORE BY MOOD</p>{["All","Culture","Nature","Adventure","History","City","Coast","Offbeat"].map(c=><button key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}><span>{c}</span><b>{c==="All"?destinations.length:destinations.filter(d=>d.category===c).length}</b></button>)}<hr/><button className={category==="Saved"?"active":""} onClick={()=>setCategory("Saved")}><span>♡ Saved</span><b>{saved.length}</b></button></aside>
+        <div className="explore-main">
+          <div className="explore-title"><div><p className="atlas-kicker">{category==="All"?"THE FULL FIELD GUIDE":category.toUpperCase()}</p><h2>{category==="Saved"?"Places you saved.":"Choose your next chapter."}</h2></div><span>{category==="Saved"?saved.length:filtered.length} places</span></div>
+          <div className="atlas-grid">{(category==="Saved"?destinations.filter(d=>saved.includes(d.id)):filtered).map((d,i)=><article className={`atlas-card tone-${d.color}`} key={d.id}>
+            <button className={`atlas-save ${saved.includes(d.id)?"on":""}`} onClick={()=>toggleSaved(d.id)} aria-label={`${saved.includes(d.id)?"Unsave":"Save"} ${d.name}`}>{saved.includes(d.id)?"♥":"♡"}</button>
+            <button className="card-visual" onClick={()=>open(d)}><span className="card-index">{String(i+1).padStart(2,"0")}</span><div className="landform"><i/><i/><i/></div><span className="coordinates">{d.coordinates}</span><p>{d.mood}</p></button>
+            <div className="atlas-card-body"><small>{d.region} · {d.category}</small><h3><button onClick={()=>open(d)}>{d.name}</button></h3><p>{d.intro}</p><div className="best-for">{d.bestFor.slice(0,3).map(x=><span key={x}>{x}</span>)}</div><div className="card-facts"><span>◷ {d.days}</span><span>⌁ {d.altitude}</span><span>{"$".repeat(d.budget)}</span></div><div className="card-footer"><button className={route.includes(d.id)?"added":""} onClick={()=>toggleRoute(d.id)}>{route.includes(d.id)?"✓ In route":"+ Add to route"}</button><button onClick={()=>open(d)}>Open guide ↗</button></div></div>
+          </article>)}</div>
+          {category==="Saved"&&!saved.length&&<div className="atlas-empty"><span>♡</span><h3>Your map is still wide open.</h3><p>Save places as you explore and they’ll gather here.</p><button onClick={()=>setCategory("All")}>Explore all places</button></div>}
         </div>
       </section>
+    </>}
 
-      <section className="cta">
-        <div className="shell cta-inner"><div><p className="eyebrow"><span>✦</span> Your trip starts with a hunch</p><h2>Let’s turn it into<br/><em>a route.</em></h2></div><div><p>Save the places that pull you in. We’ll help you shape the days between them.</p><button onClick={() => setShowPlanner(true)}>Build my Guatemala trip <span>↗</span></button></div></div>
-      </section>
+    {view==="plan"&&<section className="planner-page">
+      <div className="planner-top"><div><p className="atlas-kicker">ROUTE WORKSPACE</p><h1>Make the days<br/><em>fit the feeling.</em></h1></div><div className="days-control"><span>TRIP LENGTH</span><button onClick={()=>setDays(Math.max(3,days-1))}>−</button><b>{days} days</b><button onClick={()=>setDays(Math.min(30,days+1))}>+</button></div></div>
+      <div className="planner-layout"><div className="route-board">
+        <div className="board-head"><h2>Your route</h2><span className={estimatedDays>days?"over":""}>{estimatedDays} suggested days / {days} available</span></div>
+        {routePlaces.map((d,i)=><article className="route-stop" key={d.id}><div className="route-line"><i>{i+1}</i>{i<routePlaces.length-1&&<span/>}</div><div className={`stop-art tone-${d.color}`}><div className="mini-landform"/></div><div className="stop-info"><small>STOP {String(i+1).padStart(2,"0")} · {d.region}</small><h3>{d.name}</h3><p>{d.days} suggested · {d.mood}</p><div>{activities.filter(a=>a.startsWith(d.id+":")).map(a=><span key={a}>{a.split(":")[1]} <button onClick={()=>addActivity(d,a.split(":")[1])}>×</button></span>)}</div><button onClick={()=>open(d,"do")}>Choose activities →</button></div><button className="remove-stop" onClick={()=>toggleRoute(d.id)}>×</button></article>)}
+        {!route.length&&<div className="atlas-empty"><h3>No route yet.</h3><button onClick={()=>setView("explore")}>Find your first stop</button></div>}
+        <button className="add-stop" onClick={()=>setView("explore")}>＋ Add another destination</button>
+      </div><aside className="trip-summary"><p className="atlas-kicker">TRIP PULSE</p><h2>{estimatedDays<=days?"Comfortably paced":"A little ambitious"}</h2><p>{estimatedDays<=days?`You have ${Math.max(0,days-estimatedDays)} flexible day${days-estimatedDays===1?"":"s"} for weather, rest or a beautiful detour.`:"Remove a stop or add days to avoid spending the trip in transit."}</p><div className="summary-stat"><span>Destinations</span><b>{route.length}</b></div><div className="summary-stat"><span>Saved activities</span><b>{activities.length}</b></div><div className="summary-stat"><span>Budget rhythm</span><b>{routePlaces.length?"$".repeat(Math.round(routePlaces.reduce((n,d)=>n+d.budget,0)/routePlaces.length)):"—"}</b></div><a href={maps(routePlaces.map(d=>d.name).join(" to "))} target="_blank" rel="noreferrer">Open route in Google Maps ↗</a><small>Road times vary. This link is a starting point, not a booking.</small></aside></div>
+    </section>}
 
-      <footer className="footer shell"><div className="brand footer-brand"><span className="brand-mark">Q</span><span>quetzal</span></div><p>Made for curious travelers.<br/>Move slowly. Travel kindly.</p><div><a href="#discover">Places</a><a href="#routes">Routes</a><a href={mapsUrl("Guatemala travel attractions")} target="_blank" rel="noreferrer">Google Maps</a></div><small>Independent guide · Always verify local conditions</small></footer>
+    {view==="language"&&<section className="language-page"><div className="page-lede"><p className="atlas-kicker">POCKET SPANISH</p><h1>A little language<br/><em>goes a long way.</em></h1><p>Tap any phrase to hear yourself practice it. Guatemala is multilingual; Spanish helps widely, while learning a greeting in the local Maya language shows care.</p></div><div className="phrase-layout"><aside>{phrases.map(g=><button key={g[0]} className={phraseGroup===g[0]?"active":""} onClick={()=>setPhraseGroup(g[0])}>{g[0]} <span>→</span></button>)}</aside><div className="phrase-list">{phrases.find(g=>g[0]===phraseGroup)?.[1].map((p,i)=><button key={p[0]} onClick={()=>{if("speechSynthesis" in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(p[0]))}setToast("Playing phrase")}}><i>{String(i+1).padStart(2,"0")}</i><div><b>{p[0]}</b><small>{p[1]}</small></div><span>◖))</span></button>)}</div></div><div className="language-note"><b>Respectful travel note</b><p>Guatemala recognizes 22 Maya languages alongside Spanish, Xinka and Garifuna. Don’t assume Spanish is everyone’s first language, and always ask before photographing people.</p></div></section>}
 
-      {showPlanner && <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowPlanner(false); }}>
-        <aside className="planner" aria-modal="true" role="dialog" aria-labelledby="planner-title">
-          <button className="close" onClick={() => setShowPlanner(false)} aria-label="Close planner">×</button>
-          <p className="kicker">YOUR LOOSE-LEAF ITINERARY</p><h2 id="planner-title">The route so far.</h2><p className="planner-lede">Nothing is locked in. Add, remove and follow your curiosity.</p>
-          <div className="plan-stats"><span><b>{plan.length}</b> stops</span><span><b>{Math.max(4, plan.length * 2 + 1)}</b> suggested days</span><span><b>{"$".repeat(Math.min(3, Math.max(1, planPace)))}</b> pace</span></div>
-          <div className="plan-list">{plan.map((id, i) => { const place = places.find(p => p.id === id)!; return <div key={id}><span>DAY {i * 2 + 1}</span><i>{i + 1}</i><section><b>{place.name}</b><small>{place.vibe} · {place.days}</small></section><button onClick={() => togglePlan(id)} aria-label={`Remove ${place.name}`}>×</button></div>; })}</div>
-          {!plan.length && <div className="plan-empty">Your route is wide open. Add a place that sparks something.</div>}
-          <div className="planner-actions"><button onClick={() => { setShowPlanner(false); jump("discover"); }}>+ Add another stop</button><a href={mapsUrl(plan.map(id => places.find(p => p.id === id)?.name).join(" to ") + " Guatemala")} target="_blank" rel="noreferrer">See route in Maps ↗</a></div>
-          <p className="local-note">✓ This plan is automatically saved on this device.</p>
-        </aside>
-      </div>}
-      {notice && <div className="toast" role="status">✦ {notice}</div>}
-    </main>
-  );
+    {view==="faq"&&<section className="faq-page"><div className="page-lede"><p className="atlas-kicker">BEFORE YOU GO</p><h1>The practical<br/><em>Guatemala briefing.</em></h1><p>Clear answers for route planning, grounded in official travel, health and emergency guidance. Last reviewed July 2026.</p></div><div className="faq-layout"><div className="faq-list">{faqs.map((f,i)=><article key={f.q} className={faqOpen===i?"open":""}><button onClick={()=>setFaqOpen(faqOpen===i?null:i)}><span>{String(i+1).padStart(2,"0")}</span><b>{f.q}</b><i>{faqOpen===i?"−":"+"}</i></button>{faqOpen===i&&<p>{f.a}</p>}</article>)}</div><aside className="source-card"><p className="atlas-kicker">LIVE CHECKS</p><h2>Verify before departure.</h2><p>Conditions, entry rules and advisories change. Use these official starting points close to your travel date.</p>{sources.map(s=><a key={s[0]} href={s[1]} target="_blank" rel="noreferrer">{s[0]} <span>↗</span></a>)}<div><b>Emergency numbers</b><p>Police 110 / 120<br/>Fire 122 / 123<br/>CONRED 119<br/>Tourist assistance 1500</p></div></aside></div></section>}
+
+    {selected&&<div className="guide-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><aside className="destination-guide" role="dialog" aria-modal="true" aria-label={`${selected.name} guide`}>
+      <button className="guide-close" onClick={close} aria-label="Close destination guide">×</button><header className={`guide-hero tone-${selected.color}`}><p>{selected.region} / {selected.category}</p><h2>{selected.name}</h2><span>{selected.mood}</span><div className="guide-landform"><i/><i/><i/></div></header>
+      <nav className="guide-tabs">{([['story','Story'],['do','Do & see'],['eat','Eat'],['stay','Stay'],['transport','Get there']] as [DetailTab,string][]).map(t=><button key={t[0]} className={detailTab===t[0]?"active":""} onClick={()=>setDetailTab(t[0])}>{t[1]}</button>)}</nav>
+      <div className="guide-content">{detailTab==="story"&&<div className="story-tab"><p className="big-intro">{selected.intro}</p><div className="guide-facts"><span><b>{selected.days}</b>Suggested time</span><span><b>{selected.altitude}</b>Altitude</span><span><b>{"$".repeat(selected.budget)}</b>Budget</span></div><h3>Why it matters</h3><p>{selected.history}</p><h3>The Quetzal take</h3><p className="tip-box">✦ {selected.tip}</p>{selected.caution&&<p className="caution-box"><b>Check before you go</b>{selected.caution}</p>}</div>}
+        {detailTab!=="story"&&<div className="detail-list"><div className="detail-heading"><p className="atlas-kicker">{detailTab==="do"?"CURATED, NOT CROWDED":detailTab==="eat"?"GOOD PLACES TO START":detailTab==="stay"?"SLEEP WITH A SENSE OF PLACE":"THE PRACTICAL ROUTE"}</p><h3>{detailTab==="do"?"What to do":detailTab==="eat"?"Where to eat":detailTab==="stay"?"Where to stay":"How to get there"}</h3></div>{(detailTab==="do"?selected.activities:detailTab==="eat"?selected.eat:detailTab==="stay"?selected.stay:selected.transport).map((item,i)=><article key={item.name}><i>{String(i+1).padStart(2,"0")}</i><div><h4>{item.name}</h4><p>{item.note}</p>{item.tag&&<span>{item.tag}</span>}</div><div className="detail-actions">{detailTab==="do"&&<button className={activities.includes(`${selected.id}:${item.name}`)?"on":""} onClick={()=>addActivity(selected,item.name)}>{activities.includes(`${selected.id}:${item.name}`)?"✓":"+"}</button>}<a href={maps(item.map||item.name)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name} in Google Maps`}>↗</a></div></article>)}<p className="verify-note">Listings are curated starting points. Verify current hours, prices and availability in Maps or directly before setting out.</p></div>}
+      </div><footer className="guide-footer"><button className={route.includes(selected.id)?"added":""} onClick={()=>toggleRoute(selected.id)}>{route.includes(selected.id)?"✓ In your route":"+ Add destination to route"}</button><a href={maps(selected.name)} target="_blank" rel="noreferrer">View area in Maps ↗</a></footer>
+    </aside></div>}
+    {toast&&<div className="atlas-toast" role="status">✦ {toast}</div>}
+  </main>
 }
