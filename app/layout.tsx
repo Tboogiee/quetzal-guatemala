@@ -8,11 +8,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = host.includes("localhost") ? "http" : "https";
   const image = `${protocol}://${host}/og.png`;
   return {
-    title: "Quetzal — Find your way through Guatemala",
-    description: "A smarter field guide to Guatemala: curated places, flexible routes and practical travel notes.",
+    title: "Quetzal — Your intelligent Guatemala travel companion",
+    description: "Plan a smarter Guatemala trip with curated places, optimized routes, cultural events, live travel tools and practical local guidance.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
-    openGraph: { title: "Quetzal — Find your way through Guatemala", description: "Curated places, flexible routes and practical travel notes.", images: [{ url: image, width: 1200, height: 630 }] },
-    twitter: { card: "summary_large_image", title: "Quetzal — Guatemala travel, beautifully planned", description: "Find your way through Guatemala.", images: [image] },
+    openGraph: { title: "Quetzal — Guatemala, beautifully planned", description: "Curated places, intelligent routes, cultural events and live travel tools.", images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title: "Quetzal — Guatemala, beautifully planned", description: "Your intelligent Guatemala travel companion.", images: [image] },
   };
 }
 
