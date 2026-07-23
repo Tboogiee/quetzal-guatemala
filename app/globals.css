@@ -49,6 +49,9 @@ img { display: block; max-width: 100%; }
 .atlas-nav > nav b { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--deep); color: #fff; font-size: 8px; }
 .nav-tools { display: flex; align-items: center; gap: 8px; }
 .currency-trigger { border: 1px solid var(--line); border-radius: 99px; background: #fff; padding: 10px 13px; color: var(--deep); font-size: 9px; font-weight: 850; }
+.account-trigger { display: flex; align-items: center; gap: 7px; padding: 6px 11px 6px 6px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--deep); font-size: 8px; font-weight: 850; }
+.account-trigger span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: #e3ece5; color: var(--green); }
+.account-trigger.signed-in span { background: var(--lime); color: var(--deep); }
 .route-cta { border: 0; border-radius: 99px; background: var(--deep); color: #fff; padding: 11px 15px; font-size: 10px; font-weight: 800; }
 .route-cta span { color: var(--lime); margin-left: 8px; }
 
@@ -199,6 +202,7 @@ img { display: block; max-width: 100%; }
 .smart-panel > p:not(.atlas-kicker) { color: #b4ccc7; font-size: 10px; line-height: 1.6; }
 .pulse-row { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, .14); font-size: 8px; }
 .smart-build { width: 100%; margin: 12px 0; padding: 13px; border: 0; border-radius: 99px; background: var(--lime); color: var(--deep); font-size: 8px; font-weight: 850; }
+.save-account-link { width: 100%; padding: 11px; border: 1px solid #52756f; border-radius: 99px; background: transparent; color: #fff; font-size: 8px; font-weight: 800; }
 .event-mini { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; width: 100%; padding: 10px 0; border: 0; border-top: 1px solid rgba(255, 255, 255, .13); background: none; color: white; text-align: left; }
 .event-mini time { color: var(--lime); font-size: 8px; }
 .event-mini b, .event-mini small { display: block; }
@@ -314,6 +318,61 @@ img { display: block; max-width: 100%; }
 .guide-footer button.added { background: var(--green); }
 .guide-footer a { border: 1px solid var(--line); color: var(--ink); }
 
+.account-backdrop { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(3, 31, 28, .72); backdrop-filter: blur(7px); }
+.account-panel { position: relative; width: min(940px, 100%); max-height: calc(100vh - 48px); overflow: auto; border-radius: 16px; background: var(--paper); box-shadow: 0 30px 100px rgba(0, 20, 18, .35); animation: account-in .22s ease; }
+.account-close { position: absolute; z-index: 5; right: 18px; top: 17px; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .9); color: var(--deep); font-size: 21px; }
+.account-loading { display: grid; place-items: center; min-height: 420px; text-align: center; }
+.account-loading i { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--lime); color: var(--deep); font: italic 700 25px var(--font-display); }
+.account-loading h2 { font: 550 28px var(--font-display); }
+.auth-layout { display: grid; grid-template-columns: 1.05fr .95fr; min-height: 570px; }
+.auth-story { padding: 85px 58px; border-radius: 16px 0 0 16px; background: linear-gradient(150deg, var(--deep), #1d5b51); color: #fff; }
+.auth-story .atlas-kicker { color: var(--lime); }
+.auth-story h2 { margin: 18px 0; font: 550 48px/1.03 var(--font-display); letter-spacing: -2px; }
+.auth-story h2 em { color: var(--lime); }
+.auth-story > p:not(.atlas-kicker) { max-width: 420px; color: #bfd2ce; font-size: 11px; line-height: 1.75; }
+.auth-story > div { display: flex; align-items: center; gap: 12px; margin-top: 45px; padding: 16px; border: 1px solid #49736b; border-radius: 9px; }
+.auth-story > div span { color: var(--lime); font-size: 21px; }
+.auth-story > div b { font-size: 9px; line-height: 1.5; }
+.auth-card { display: flex; flex-direction: column; justify-content: center; padding: 60px 52px; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 25px; padding: 4px; border-radius: 99px; background: #e7ece5; }
+.auth-tabs button { padding: 10px; border: 0; border-radius: 99px; background: none; color: var(--muted); font-size: 8px; font-weight: 850; }
+.auth-tabs button.active { background: #fff; color: var(--deep); box-shadow: 0 4px 12px #183b3420; }
+.auth-form { display: grid; gap: 15px; }
+.auth-form label span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 7px; font-weight: 850; letter-spacing: 1px; text-transform: uppercase; }
+.auth-form input { width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; outline: none; color: var(--deep); font-size: 10px; }
+.auth-form input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(30, 103, 89, .1); }
+.auth-submit { padding: 14px; border: 0; border-radius: 99px; background: var(--deep); color: #fff; font-size: 8px; font-weight: 850; }
+.auth-card > small { margin-top: 18px; color: #82938f; font-size: 7px; line-height: 1.5; }
+.account-notice { margin: 15px 0 0; padding: 11px 13px; border-radius: 7px; background: #e2eee3; color: var(--green); font-size: 8px; line-height: 1.5; }
+.account-notice.error { background: #f5e4dc; color: #9c4a34; }
+.trips-layout { padding: 50px; }
+.trips-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.trips-head h2 { margin: 7px 0 2px; font: 550 36px var(--font-display); }
+.trips-head p:not(.atlas-kicker) { margin: 0; color: var(--muted); font-size: 8px; }
+.trips-head > button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--deep); font-size: 8px; font-weight: 800; }
+.save-trip-card { display: grid; grid-template-columns: 1fr 1.1fr; gap: 26px; align-items: end; margin: 28px 0; padding: 22px; border-radius: 11px; background: var(--deep); color: #fff; }
+.save-trip-card .atlas-kicker { color: var(--lime); }
+.save-trip-card h3 { margin: 7px 0 3px; font: 550 25px var(--font-display); }
+.save-trip-card small { color: #a9c3bd; font-size: 7px; }
+.save-trip-card > div:last-child { display: flex; gap: 7px; }
+.save-trip-card input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #53756e; border-radius: 8px; background: #174c44; color: #fff; outline: none; font-size: 9px; }
+.save-trip-card button { padding: 12px 16px; border: 0; border-radius: 8px; background: var(--lime); color: var(--deep); font-size: 8px; font-weight: 850; }
+.cloud-trips-title { display: flex; align-items: end; justify-content: space-between; margin-bottom: 8px; }
+.cloud-trips-title h3 { margin: 6px 0 0; font: 550 28px var(--font-display); }
+.cloud-trips-title > b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #e3ece4; color: var(--green); font-size: 9px; }
+.cloud-trips > article { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 14px; padding: 17px 4px; border-top: 1px solid var(--line); }
+.trip-number { font: 600 20px var(--font-display); color: var(--green); }
+.trip-number small { display: block; color: #8a9c97; font: 700 6px var(--font-body); text-transform: uppercase; }
+.cloud-trips h4 { margin: 0; font: 600 19px var(--font-display); }
+.cloud-trips article p { margin: 4px 0; color: var(--muted); font-size: 8px; }
+.cloud-trips article small { color: #8a9c97; font-size: 7px; }
+.trip-actions { display: flex; gap: 6px; }
+.trip-actions button { padding: 9px 12px; border: 0; border-radius: 99px; background: var(--deep); color: #fff; font-size: 7px; font-weight: 850; }
+.trip-actions button.delete { width: 29px; padding: 0; background: #eee8df; color: #8d5d4e; font-size: 15px; }
+.empty-cloud { padding: 45px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); }
+.empty-cloud span { color: var(--green); font-size: 26px; }
+.empty-cloud p { font-size: 9px; }
+
 .currency-panel { position: relative; width: min(460px, 100%); height: 100%; padding: 80px 38px; background: var(--paper); box-shadow: -25px 0 80px rgba(0, 0, 0, .23); animation: drawer .28s ease; }
 .currency-panel h2 { margin: 12px 0 10px; font: 550 38px var(--font-display); }
 .rate-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 8px; }
@@ -357,6 +416,7 @@ img { display: block; max-width: 100%; }
 @keyframes drawer { from { transform: translateX(100%); } }
 @keyframes toast { from { transform: translate(-50%, 12px); opacity: 0; } }
 @keyframes chat-in { from { transform: translateY(10px); opacity: 0; } }
+@keyframes account-in { from { transform: translateY(12px) scale(.99); opacity: 0; } }
 
 @media (max-width: 1100px) {
   .atlas-grid { grid-template-columns: 1fr 1fr; }
@@ -396,6 +456,8 @@ img { display: block; max-width: 100%; }
   .atlas-brand small, .route-cta { display: none; }
   .atlas-brand { font-size: 19px; }
   .currency-trigger { padding: 9px; }
+  .account-trigger { padding: 5px; font-size: 0; }
+  .account-trigger span { width: 27px; height: 27px; font-size: 8px; }
   .atlas-nav > nav button { padding: 8px 6px; font-size: 9px; }
   .atlas-nav > nav i { display: none; }
   .atlas-hero { min-height: auto; padding: 50px 20px 55px; }
@@ -450,6 +512,19 @@ img { display: block; max-width: 100%; }
   .detail-list > article { grid-template-columns: 22px 1fr; }
   .detail-actions { grid-column: 2; }
   .source-card { padding: 21px; }
+  .account-backdrop { padding: 0; }
+  .account-panel { width: 100%; max-height: 100vh; min-height: 100vh; border-radius: 0; }
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-story { min-height: 260px; padding: 55px 24px 28px; border-radius: 0; }
+  .auth-story h2 { font-size: 39px; }
+  .auth-story > div { display: none; }
+  .auth-card { padding: 34px 24px; }
+  .trips-layout { padding: 48px 20px 30px; }
+  .trips-head h2 { font-size: 29px; }
+  .save-trip-card { grid-template-columns: 1fr; gap: 17px; }
+  .save-trip-card > div:last-child { flex-direction: column; }
+  .cloud-trips > article { grid-template-columns: 43px 1fr; }
+  .trip-actions { grid-column: 2; }
   .currency-panel { padding: 72px 22px; }
   .conversion-box { grid-template-columns: 1fr; }
   .conversion-box > button { margin: 0 auto; transform: rotate(90deg); }
