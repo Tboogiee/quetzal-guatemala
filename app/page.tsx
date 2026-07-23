@@ -2,6 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import AccountPanel from "@/components/AccountPanel";
+import { useTravelAccount } from "@/hooks/useTravelAccount";
+import type { CloudTrip } from "@/lib/supabase";
 import { Destination, destinations, faqs, phrases, sources } from "./travel-data";
 import {
   currencies,
@@ -179,6 +182,7 @@ function GuatemalaMap({ routePlaces }: { routePlaces: Destination[] }) {
 }
 
 export default function Home() {
+  const account = useTravelAccount();
   const [view, setView] = useState<View>("explore");
   const [selected, setSelected] = useState<Destination | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>("story");
@@ -212,6 +216,7 @@ export default function Home() {
   const [chat, setChat] = useState<ChatMessage[]>([
     { role: "assistant", text: "Ask me about routes, transport, events, food or the best time to go." },
   ]);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -235,10 +240,10 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    if (!selected) return;
+    if (!selected && !accountOpen) return;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [selected]);
+  }, [selected, accountOpen]);
   useEffect(() => {
     fetch("https://open.er-api.com/v6/latest/GTQ")
       .then(response => response.json())
@@ -371,12 +376,30 @@ export default function Home() {
     }
   };
 
+  const loadCloudTrip = (trip: CloudTrip) => {
+    setRoute(trip.route);
+    setActivities(trip.activities);
+    setSaved(trip.savedPlaces);
+    setStartDate(trip.startDate);
+    setEndDate(trip.endDate);
+    if (trip.startDate && trip.endDate) {
+      setDays(Math.max(1, Math.round((new Date(`${trip.endDate}T12:00:00`).getTime() - new Date(`${trip.startDate}T12:00:00`).getTime()) / 86400000) + 1));
+    }
+    setView("plan");
+    setAccountOpen(false);
+    setToast(`Opened ${trip.title}`);
+  };
+
   return <main className="atlas-app">
     <header className="atlas-nav">
       <button className="atlas-brand" onClick={() => setView("explore")}><span>Q</span><div>quetzal<small>GUATEMALA COMPANION</small></div></button>
       <nav>{tabs.map(tab => <button key={tab.id} className={view === tab.id ? "active" : ""} onClick={() => setView(tab.id)}><i>{tab.icon}</i>{tab.label}{tab.id === "plan" && <b>{route.length}</b>}</button>)}</nav>
       <div className="nav-tools">
         <button className="currency-trigger" onClick={() => setCurrencyOpen(true)}>Q ⇄ $</button>
+        <button className={`account-trigger ${account.status === "authenticated" ? "signed-in" : ""}`} onClick={() => setAccountOpen(true)}>
+          <span>{account.status === "authenticated" ? (account.displayName[0] || "Q").toUpperCase() : "○"}</span>
+          {account.status === "authenticated" ? "My trips" : "Sign in"}
+        </button>
         <button className="route-cta" onClick={() => setView("plan")}>Open trip <span>↗</span></button>
       </div>
     </header>
@@ -435,6 +458,7 @@ export default function Home() {
           <p className="atlas-kicker">TRIP PULSE</p><h2>{validDates ? season.name : "Add your dates"}</h2><p>{validDates ? season.tone : "Unlock event matches, season guidance and a suggested route."}</p>
           {validDates && <><div className="pulse-row"><span>Days</span><b>{days}</b></div><div className="pulse-row"><span>Events on your dates</span><b>{tripEvents.length}</b></div><div className="pulse-row"><span>Route distance</span><b>~{Math.round(routeDistance(routePlaces))} km</b></div></>}
           <button className="smart-build" disabled={!validDates} onClick={buildSuggestedRoute}>✦ Build around my dates</button>
+          <button className="save-account-link" onClick={() => setAccountOpen(true)}>Save this trip to my account →</button>
           {tripEvents.slice(0, 3).map(event => <button className="event-mini" key={event.id} onClick={() => { setView("events"); setEventDepartment(event.department); }}><time>{event.month}/{event.day}</time><span><b>{event.name}</b><small>{event.town}</small></span><em>↗</em></button>)}
           <a href={maps(routePlaces.map(destination => destination.name).join(" to "))} target="_blank" rel="noreferrer">Open route in Google Maps ↗</a>
           <small>Optimization reduces straight-line distance. Confirm real road conditions and journey times locally.</small>
@@ -474,6 +498,13 @@ export default function Home() {
         {detailTab !== "story" && <div className="detail-list"><div className="detail-heading"><p className="atlas-kicker">{detailTab === "do" ? "CURATED, NOT CROWDED" : detailTab === "eat" ? "GOOD PLACES TO START" : detailTab === "stay" ? "SLEEP WITH A SENSE OF PLACE" : "THE PRACTICAL ROUTE"}</p><h3>{detailTab === "do" ? "What to do" : detailTab === "eat" ? "Where to eat" : detailTab === "stay" ? "Where to stay" : "How to get there"}</h3></div>{(detailTab === "do" ? selected.activities : detailTab === "eat" ? selected.eat : detailTab === "stay" ? selected.stay : selected.transport).map((item, index) => <article key={item.name}><i>{String(index + 1).padStart(2, "0")}</i><div><h4>{item.name}</h4><p>{item.note}</p>{item.tag && <span>{item.tag}</span>}</div><div className="detail-actions">{detailTab === "do" && <button className={activities.includes(`${selected.id}:${item.name}`) ? "on" : ""} onClick={() => addActivity(selected, item.name)}>{activities.includes(`${selected.id}:${item.name}`) ? "✓" : "+"}</button>}<a href={maps(item.map || item.name)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name} in Google Maps`}>↗</a></div></article>)}<p className="verify-note">Curated starting points. Verify current hours, prices and availability before setting out.</p></div>}
       </div><footer className="guide-footer"><button className={route.includes(selected.id) ? "added" : ""} onClick={() => toggleRoute(selected.id)}>{route.includes(selected.id) ? "✓ In your route" : "+ Add destination to route"}</button><a href={maps(selected.name)} target="_blank" rel="noreferrer">View area in Maps ↗</a></footer>
     </aside></div>}
+
+    {accountOpen && <AccountPanel
+      account={account}
+      currentTrip={{ startDate, endDate, route, activities, savedPlaces: saved }}
+      onClose={() => setAccountOpen(false)}
+      onLoadTrip={loadCloudTrip}
+    />}
 
     {currencyOpen && <div className="tool-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCurrencyOpen(false); }}><aside className="currency-panel" role="dialog" aria-modal="true" aria-label="Quetzal currency converter"><button className="tool-close" onClick={() => setCurrencyOpen(false)}>×</button><p className="atlas-kicker">QUETZAL CONVERTER</p><h2>Know what it costs.</h2><div className="rate-status"><i className={ratesLive ? "live" : ""}/>{ratesLive ? "Live reference rate" : "Offline reference rate"}</div>
       <div className="conversion-box"><label>{currencyDirection === "toGTQ" ? currency : "GTQ"}<input inputMode="decimal" value={currencyAmount} onChange={event => setCurrencyAmount(event.target.value)}/></label><button onClick={() => setCurrencyDirection(current => current === "toGTQ" ? "fromGTQ" : "toGTQ")}>⇅</button><div><span>{currencyDirection === "toGTQ" ? "GTQ" : currency}</span><b>{new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(converted)}</b></div></div>
